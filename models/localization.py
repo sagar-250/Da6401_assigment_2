@@ -15,7 +15,22 @@ class VGG11Localizer(nn.Module):
             in_channels: Number of input channels.
             dropout_p: Dropout probability for the localization head.
         """
-        pass
+        super().__init__()
+        from .vgg11 import VGG11Encoder
+        self.enc = VGG11Encoder(in_channels)
+        self.avg = nn.AdaptiveAvgPool2d((7, 7))
+        
+        from .layers import CustomDropout
+        drp = CustomDropout(dropout_p)
+        self.loc = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(True),
+            drp,
+            nn.Linear(4096, 4096),
+            nn.ReLU(True),
+            drp,
+            nn.Linear(4096, 4)
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for localization model.
@@ -25,5 +40,8 @@ class VGG11Localizer(nn.Module):
         Returns:
             Bounding box coordinates [B, 4] in (x_center, y_center, width, height) format in original image pixel space(not normalized values).
         """
-        # TODO: Implement forward pass.
-        raise NotImplementedError("Implement VGG11Localizer.forward")
+        bt = self.enc(x, False)
+        tmp = self.avg(bt)
+        tmp = tmp.view(tmp.size(0), -1)
+        bx = self.loc(tmp)
+        return bx

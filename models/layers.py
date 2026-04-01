@@ -16,7 +16,8 @@ class CustomDropout(nn.Module):
         Args:
             p: Dropout probability.
         """
-        pass
+        super().__init__()
+        self.p = p
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -28,5 +29,11 @@ class CustomDropout(nn.Module):
         Returns:
             Output tensor.
         """
-        # TODO: implement dropout.
-        raise NotImplementedError("Implement CustomDropout.forward")
+        if not self.training or self.p == 0:
+            return x
+        
+        prob = 1.0 - self.p
+        rnd = torch.rand_like(x)
+        msk = (rnd < prob).float()
+        
+        return x * msk / prob
