@@ -41,6 +41,11 @@ This repository is an instructional skeleton for building the complete visual pe
 
 For questions or issues, please contact the teaching staff or post on the course forum.
 
+## Submission Links
+
+- Public W&B report link: https://wandb.ai/<your-entity>/DA6401-Assignment-2/reports/<your-report>
+- GitHub repository link: https://github.com/sagar-250/Da6401_assigment_2
+
 ---
 
 Good luck with your implementation!

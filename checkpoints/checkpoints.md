@@ -1,37 +1,11 @@
-# Checkpoint Submission Instructions
+# Checkpoints
 
-Submit the following three checkpoint files inside this folder:
+This folder is intentionally tracked without model binaries.
 
-1. Task-1: `classifier.pth`
-2. Task-2: `localizer.pth`
-3. Task-3: `unet.pth`
+`MultiTaskPerceptionModel` in [models/multitask.py](../models/multitask.py) auto-downloads these files when missing:
 
-These filenames are mandatory for evaluation.
+- `classifier.pth` (Google Drive ID: `1c-3v_lRaMJiS28rK1WQOuP31qgBwtMUl`)
+- `localizer.pth` (Google Drive ID: `150uYxzErRgr9KOy3Z94MwG-0YExOlJZE`)
+- `unet.pth` (Google Drive ID: `1z7JK5cHYOAicmNkPpHvz6mg4R67c9Rl7`)
 
-## How These Are Used
-
-- Task-4 (Unified Model): initialize the shared backbone/heads using these trained weights.
-- Evaluation pipeline: we will load these same checkpoint files during grading.
-
-## Expected Content
-
-Each `.pth` may store either:
-
-- a plain `state_dict`, or
-- a dict containing model weights under the key, `state_dict`.
-
-Recommended checkpoint payload:
-
-```python
-{
-	"state_dict": model.state_dict(),
-	"epoch": epoch,
-	"best_metric": best_metric,
-}
-```
-
-## Notes
-
-- Keep architecture definitions consistent with saved weights.
-- Do not rename files.
-- Ensure checkpoints are readable with `torch.load(..., map_location=device)`.
+Keep this directory in git, but do not commit `.pth` files.
