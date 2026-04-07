@@ -43,7 +43,7 @@ class MultiTaskPerceptionModel(nn.Module):
                 if not os.path.exists(classifier_path):
                     gdown.download(id="1c-3v_lRaMJiS28rK1WQOuP31qgBwtMUl", output=classifier_path, quiet=False)
                 if not os.path.exists(localizer_path):
-                    gdown.download(id="150uYxzErRgr9KOy3Z94MwG-0YExOlJZE", output=localizer_path, quiet=False)
+                    gdown.download(id="1HFpmi7275QMc45quQKtQlF7VzamNzLG4", output=localizer_path, quiet=False)
                 if not os.path.exists(unet_path):
                     gdown.download(id="1z7JK5cHYOAicmNkPpHvz6mg4R67c9Rl7", output=unet_path, quiet=False)
             except Exception as e:
@@ -88,7 +88,11 @@ class MultiTaskPerceptionModel(nn.Module):
         bt, fts = self.enc(x, return_features=True)
         
         c_out = self.cls_head(bt)
-        l_out = self.loc_head(bt)
+        l_raw = self.loc_head(bt)
+        l_cxcy = torch.sigmoid(l_raw[:, 0:2])
+        l_wh = torch.sigmoid(l_raw[:, 2:4]).clamp(min=1e-3, max=1.0)
+        # Rescale the normalized outputs [0, 1] to original image size (224x224) 
+        l_out = torch.cat([l_cxcy, l_wh], dim=1) * 224.0
         
         u4, d4, u3, d3, u2, d2, u1, d1, u0, hd = self.seg_head
         
