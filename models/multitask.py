@@ -43,7 +43,7 @@ class MultiTaskPerceptionModel(nn.Module):
                 if not os.path.exists(classifier_path):
                     gdown.download(id="1c-3v_lRaMJiS28rK1WQOuP31qgBwtMUl", output=classifier_path, quiet=False)
                 if not os.path.exists(localizer_path):
-                    gdown.download(id="150uYxzErRgr9KOy3Z94MwG-0YExOlJZE", output=localizer_path, quiet=False)
+                    gdown.download(id="1ECCD6sXVl6u7UGPEAcvAcqTo37EyqAmz", output=localizer_path, quiet=False)
                 if not os.path.exists(unet_path):
                     gdown.download(id="1KZ8LQEh9twkyzmwPeKbatnR2__KF_NbZ", output=unet_path, quiet=False)
             except Exception as e:
@@ -59,7 +59,10 @@ class MultiTaskPerceptionModel(nn.Module):
         l_mod = VGG11Localizer(in_channels)
         if os.path.exists(localizer_path):
             l_mod.load_state_dict(_extract_state_dict(torch.load(localizer_path, map_location='cpu')))
-        self.loc_head = nn.Sequential(l_mod.avg, nn.Flatten(), l_mod.loc)
+        
+        # Save the localizer's specific encoder so it isn't forced to use the classifier's shared encoder
+        self.loc_enc = l_mod.seer
+        self.loc_head = nn.Sequential(l_mod.squash, nn.Flatten(), l_mod.finder)
         
         u_mod = VGG11UNet(seg_classes, in_channels)
         if os.path.exists(unet_path):
@@ -70,19 +73,14 @@ class MultiTaskPerceptionModel(nn.Module):
         self.enc.load_state_dict(c_mod.enc.state_dict())
 
     def forward(self, x: torch.Tensor):
-        """Forward pass for multi-task model.
-        Args:
-            x: Input tensor of shape [B, in_channels, H, W].
-        Returns:
-            A dict with keys:
-            - 'classification': [B, num_breeds] logits tensor.
-            - 'localization': [B, 4] bounding box tensor.
-            - 'segmentation': [B, seg_classes, H, W] segmentation logits tensor
-        """
+        """Forward pass for multi-task model."""
         bt, fts = self.enc(x, return_features=True)
         
         c_out = self.cls_head(bt)
-        l_out = self.loc_head(bt)
+        
+        # Use the localizer's original encoder for the localization head
+        bt_loc = self.loc_enc(x, return_features=False)
+        l_out = self.loc_head(bt_loc)
         
         # Forward pass using the UNet's separate VGG encoder & decoder structure 
         s_out = self.seg_head(x)
