@@ -6,6 +6,6 @@ This folder is intentionally tracked without model binaries.
 
 - `classifier.pth` (Google Drive ID: `1c-3v_lRaMJiS28rK1WQOuP31qgBwtMUl`)
 - `localizer.pth` (Google Drive ID: `150uYxzErRgr9KOy3Z94MwG-0YExOlJZE`)
-- `unet.pth` (Google Drive ID: `1z7JK5cHYOAicmNkPpHvz6mg4R67c9Rl7`)
+- `unet.pth` (Google Drive ID: `1KZ8LQEh9twkyzmwPeKbatnR2__KF_NbZ`)
 
 Keep this directory in git, but do not commit `.pth` files.

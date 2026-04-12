@@ -45,7 +45,7 @@ class MultiTaskPerceptionModel(nn.Module):
                 if not os.path.exists(localizer_path):
                     gdown.download(id="1HFpmi7275QMc45quQKtQlF7VzamNzLG4", output=localizer_path, quiet=False)
                 if not os.path.exists(unet_path):
-                    gdown.download(id="1z7JK5cHYOAicmNkPpHvz6mg4R67c9Rl7", output=unet_path, quiet=False)
+                    gdown.download(id="1KZ8LQEh9twkyzmwPeKbatnR2__KF_NbZ", output=unet_path, quiet=False)
             except Exception as e:
                 raise RuntimeError(f"Checkpoint download failed. Install gdown and verify Drive IDs. Error: {e}")
         
@@ -64,13 +64,7 @@ class MultiTaskPerceptionModel(nn.Module):
         u_mod = VGG11UNet(seg_classes, in_channels)
         if os.path.exists(unet_path):
             u_mod.load_state_dict(_extract_state_dict(torch.load(unet_path, map_location='cpu')))
-        self.seg_head = nn.ModuleList([
-            u_mod.up4, u_mod.dc4,
-            u_mod.up3, u_mod.dc3,
-            u_mod.up2, u_mod.dc2,
-            u_mod.up1, u_mod.dc1,
-            u_mod.up0, u_mod.hd
-        ])
+        self.seg_head = u_mod  # Keep the full separate UNet here as requested!
         
         # Load backbone from classifier initially
         self.enc.load_state_dict(c_mod.enc.state_dict())
@@ -94,26 +88,8 @@ class MultiTaskPerceptionModel(nn.Module):
         # Rescale the normalized outputs [0, 1] to original image size (224x224) 
         l_out = torch.cat([l_cxcy, l_wh], dim=1) * 224.0
         
-        u4, d4, u3, d3, u2, d2, u1, d1, u0, hd = self.seg_head
-        
-        s = u4(bt)
-        s = torch.cat([s, fts['f4']], dim=1)
-        s = d4(s)
-        
-        s = u3(s)
-        s = torch.cat([s, fts['f3']], dim=1)
-        s = d3(s)
-        
-        s = u2(s)
-        s = torch.cat([s, fts['f2']], dim=1)
-        s = d2(s)
-        
-        s = u1(s)
-        s = torch.cat([s, fts['f1']], dim=1)
-        s = d1(s)
-        
-        s = u0(s)
-        s_out = hd(s)
+        # Forward pass using the UNet's separate VGG encoder & decoder structure 
+        s_out = self.seg_head(x)
         
         return {
             'classification': c_out,

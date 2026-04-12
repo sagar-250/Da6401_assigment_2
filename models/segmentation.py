@@ -4,37 +4,98 @@
 import torch
 import torch.nn as nn
 
+class VGG11Encoder(nn.Module):
+    def __init__(self, in_channels: int = 3):
+        super().__init__()
+        self.part1 = nn.Sequential(
+            nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True)
+        )
+        self.drop1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.part2 = nn.Sequential(
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True)
+        )
+        self.drop2 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.part3 = nn.Sequential(
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True)
+        )
+        self.drop3 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.part4 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=3, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True)
+        )
+        self.drop4 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.part5 = nn.Sequential(
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True)
+        )
+        self.drop5 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+    def forward(self, x, return_features: bool = False):
+        p1 = self.part1(x)
+        t = self.drop1(p1)
+        p2 = self.part2(t)
+        t = self.drop2(p2)
+        p3 = self.part3(t)
+        t = self.drop3(p3)
+        p4 = self.part4(t)
+        t = self.drop4(p4)
+        p5 = self.part5(t)
+        bottleneck = self.drop5(p5)
+        if return_features:
+            return bottleneck, {'f1': p1, 'f2': p2, 'f3': p3, 'f4': p4, 'f5': p5}
+        return bottleneck
+
+class DecoderBlock(nn.Module):
+    def __init__(self, in_channels, skip_channels, out_channels):
+        super().__init__()
+        self.rise = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=2, stride=2)
+        self.fuse = nn.Sequential(
+            nn.Conv2d(in_channels + skip_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x, skip_x):
+        r = self.rise(x)
+        merged = torch.cat([r, skip_x], dim=1)
+        return self.fuse(merged)
+
 class VGG11UNet(nn.Module):
     """U-Net style segmentation network.
     """
-
     def __init__(self, num_classes: int = 3, in_channels: int = 3, dropout_p: float = 0.5):
-        """
-        Initialize the VGG11UNet model.
-
-        Args:
-            num_classes: Number of output classes.
-            in_channels: Number of input channels.
-            dropout_p: Dropout probability for the segmentation head.
-        """
         super().__init__()
-        from .vgg11 import VGG11Encoder
-        self.enc = VGG11Encoder(in_channels)
-        
-        self.up4 = nn.Sequential(nn.ConvTranspose2d(512, 512, 2, stride=2), nn.ReLU(True))
-        self.dc4 = nn.Sequential(nn.Conv2d(1024, 512, 3, padding=1), nn.ReLU(True), nn.Conv2d(512, 512, 3, padding=1), nn.ReLU(True))
-        
-        self.up3 = nn.Sequential(nn.ConvTranspose2d(512, 256, 2, stride=2), nn.ReLU(True))
-        self.dc3 = nn.Sequential(nn.Conv2d(512, 256, 3, padding=1), nn.ReLU(True), nn.Conv2d(256, 256, 3, padding=1), nn.ReLU(True))
-        
-        self.up2 = nn.Sequential(nn.ConvTranspose2d(256, 128, 2, stride=2), nn.ReLU(True))
-        self.dc2 = nn.Sequential(nn.Conv2d(256, 128, 3, padding=1), nn.ReLU(True), nn.Conv2d(128, 128, 3, padding=1), nn.ReLU(True))
-        
-        self.up1 = nn.Sequential(nn.ConvTranspose2d(128, 64, 2, stride=2), nn.ReLU(True))
-        self.dc1 = nn.Sequential(nn.Conv2d(128, 64, 3, padding=1), nn.ReLU(True), nn.Conv2d(64, 64, 3, padding=1), nn.ReLU(True))
-        
-        self.up0 = nn.Sequential(nn.ConvTranspose2d(64, 32, 2, stride=2), nn.ReLU(True))
-        self.hd = nn.Conv2d(32, num_classes, 1)
+        self.seer = VGG11Encoder(in_channels=in_channels)
+        self.climb1 = DecoderBlock(in_channels=512, skip_channels=512, out_channels=512)
+        self.climb2 = DecoderBlock(in_channels=512, skip_channels=512, out_channels=256)
+        self.climb3 = DecoderBlock(in_channels=256, skip_channels=256, out_channels=128)
+        self.climb4 = DecoderBlock(in_channels=128, skip_channels=128, out_channels=64)
+        self.climb5 = DecoderBlock(in_channels=64, skip_channels=64, out_channels=64)
+        self.painter = nn.Conv2d(64, num_classes, kernel_size=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for segmentation model.
@@ -44,25 +105,10 @@ class VGG11UNet(nn.Module):
         Returns:
             Segmentation logits [B, num_classes, H, W].
         """
-        bt, fts = self.enc(x, return_features=True)
-        
-        d4 = self.up4(bt)
-        d4 = torch.cat([d4, fts['f4']], dim=1)
-        d4 = self.dc4(d4)
-        
-        d3 = self.up3(d4)
-        d3 = torch.cat([d3, fts['f3']], dim=1)
-        d3 = self.dc3(d3)
-        
-        d2 = self.up2(d3)
-        d2 = torch.cat([d2, fts['f2']], dim=1)
-        d2 = self.dc2(d2)
-        
-        d1 = self.up1(d2)
-        d1 = torch.cat([d1, fts['f1']], dim=1)
-        d1 = self.dc1(d1)
-        
-        d0 = self.up0(d1)
-        st = self.hd(d0)
-        
-        return st
+        bottleneck, features = self.seer(x, return_features=True)
+        c1 = self.climb1(bottleneck, features['f5'])
+        c2 = self.climb2(c1, features['f4'])
+        c3 = self.climb3(c2, features['f3'])
+        c4 = self.climb4(c3, features['f2'])
+        c5 = self.climb5(c4, features['f1'])
+        return self.painter(c5)
