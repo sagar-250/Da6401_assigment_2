@@ -1,5 +1,19 @@
 # DA6401 Assignment-2 Skeleton Guide
 
+## Submission Links
+- **Public W&B Report:** [Report Link](https://wandb.ai/ce23b108-indian-institute-of-technology-madras/DA6401-Assignment-2/reports/Report--VmlldzoxNjQ1MDY4OQ?accessToken=47rd9bos80gsvdntn4da38le38d82hg3n5v61cq6r3y4equhewsqdoyflrf73bjd)
+- **GitHub Repository:** [sagar-250/Da6401_assigment_2](https://github.com/sagar-250/Da6401_assigment_2.git)
+
+## General Overview of Architecture
+This project implements a Unified Multi-Task Visual Perception Pipeline using a shared VGG11 backbone. The model simultaneously performs three distinct tasks on the Oxford-IIIT Pet Dataset:
+1. **Classification:** Identifies the breed among 37 distinct pet classes using an Adaptive Average Pooling and dense head.
+2. **Localization:** Predicts a bounding box `[x_center, y_center, width, height]` for the object directly in pixel space, utilizing a custom IoU + MSE loss formulation.
+3. **Segmentation:** Produces a pixel-level Trimap (foreground, background, border) using a U-Net style decoder that leverages skip connections mapped from the intermediate feature layers of the shared VGG11 encoder.
+
+The backbone incorporates custom implementations of `BatchNorm2d` and `CustomDropout` layers to ensure stable inter-task feature sharing without suffering from negative transfer.
+
+---
+
 This repository is an instructional skeleton for building the complete visual perception pipeline on Oxford-IIIT Pet.
 
 
@@ -40,11 +54,6 @@ This repository is an instructional skeleton for building the complete visual pe
 ## Contact
 
 For questions or issues, please contact the teaching staff or post on the course forum.
-
-## Submission Links
-
-- Public W&B report link: https://wandb.ai/<your-entity>/DA6401-Assignment-2/reports/<your-report>
-- GitHub repository link: https://github.com/sagar-250/Da6401_assigment_2
 
 ---
 
